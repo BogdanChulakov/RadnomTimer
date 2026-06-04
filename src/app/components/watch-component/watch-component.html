@@ -7,14 +7,22 @@
 
   <div class="divider"></div>
 
-  <div class="settings-section">
+  <div class="settings-grid">
     <div class="input-group">
       <label>Подготовка (сек):</label>
-      <input type="number" [(ngModel)]="prepareTimeInput" (ngModelChange)="updateDefaultDisplay()" [disabled]="isResultShown" min="0" max="60">
+      <input type="number" [(ngModel)]="prepareTimeInput" (ngModelChange)="updateDefaultDisplay()" [disabled]="isResultShown" min="0">
     </div>
     <div class="input-group">
-      <label>Таймер (мин):</label>
-      <input type="number" [(ngModel)]="mainTimeInput" (ngModelChange)="updateDefaultDisplay()" [disabled]="isResultShown" min="1" max="60">
+      <label>Таймер (минути):</label>
+      <input type="number" [(ngModel)]="mainTimeInput" (ngModelChange)="updateDefaultDisplay()" [disabled]="isResultShown" min="1">
+    </div>
+    <div class="input-group">
+      <label>Рундове (брой):</label>
+      <input type="number" [(ngModel)]="roundsInput" [disabled]="isResultShown" min="1">
+    </div>
+    <div class="input-group">
+      <label>Почивка (секунди):</label>
+      <input type="number" [(ngModel)]="restTimeInput" [disabled]="isResultShown" min = "0">
     </div>
   </div>
 
@@ -22,15 +30,21 @@
 
   <div class="timer-section">
     <span class="label">
-      {{ isPreparing ? 'Приготви се...' : (isPaused ? 'На Пауза' : 'Обратно броене') }}
+      {{ isPreparing ? 'Приготви се...' : (isResting ? 'ПОЧИВКА!' : 'РУНД ' + currentRound) }}
     </span>
     
-    <h2 class="timer-display" [class.preparing]="isPreparing" [class.paused]="isPaused">
+    <h2 class="timer-display" 
+        [class.preparing]="isPreparing" 
+        [class.resting]="isResting" 
+        [class.paused]="isPaused">
       {{ displayValue }}
     </h2>
+
+    <div class="rounds-indicator" *ngIf="isResultShown">
+      Рунд: {{ currentRound }} / {{ roundsInput }}
+    </div>
     
     <div class="controls-container">
-      
       <button *ngIf="!isResultShown || isPaused" class="btn btn-start" (click)="startTimer()">
         {{ isPaused ? 'Продължи' : 'Старт' }}
       </button>
@@ -46,7 +60,6 @@
       <button *ngIf="isResultShown" class="btn btn-restart" (click)="restartTimer()">
         Рестарт
       </button>
-
     </div>
   </div>
 

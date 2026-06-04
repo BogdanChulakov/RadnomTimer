@@ -14,60 +14,56 @@ import { map, switchMap, startWith } from 'rxjs/operators';
 export class WatchComponent implements OnInit, OnDestroy {
   currentTime$!: Observable<Date>;
   
+  // Полета за настройки от потребителя
   prepareTimeInput: number = 5;
-  mainTimeInput: number = 3;
+  mainTimeInput: number = 3; // в минути
+  roundsInput: number = 3;    // НОВО: Брой рундове
+  restTimeInput: number = 30; // НОВО: Почивка в секунди
 
+  // Състояния за интерфейса
   isPreparing: boolean = false;
+  isResting: boolean = false; // НОВО: Дали сме в почивка
   isPaused: boolean = false;
   isResultShown: boolean = false;
+  currentRound: number = 1;   // НОВО: Текущ рунд
 
-  private totalTicks: number = 0;
+  // Вътрешни променливи за времето
   private currentTick: number = 0;
+  private phaseSecondsLeft: number = 0;
+  private currentPhase: 'prepare' | 'work' | 'rest' = 'prepare';
+  
   private isRunning$ = new BehaviorSubject<boolean>(false);
   displayValue: string = '03:00';
   private timerSubscription!: Subscription;
 
-  // --- ДЕФИНИРАНЕ НА ЗВУЦИТЕ ---
-  // 1. Повтарящ се звук за подготовка (ще го пуснем и ще свири през цялото време)
-  private prepareTickSound = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
-  
-  // 2. Единична чиста камбана/гонг за старта на таймера
- private startBellSound = new Audio('https://actions.google.com/sounds/v1/transportation/ship_bell.ogg');
-  
-  // 3. Единична камбана/сигнал за финала
-  private endBellSound = new Audio('https://actions.google.com/sounds/v1/transportation/ship_bell.ogg');
+  // Звукови ефекти
+  private prepareTickSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+  private startBellSound = new Audio('https://actions.google.com/sounds/v1/transportation/ship_bell.ogg');
+  private endBellSound = new Audio('https://actions.google.com/sounds/v1/alarms/clock_chime.ogg');
 
-ngOnInit() {
-  // 1. Настройваме силата на звука на всички ефекти на максимум (1.0)
-  this.prepareTickSound.volume = 1.0;
-  this.startBellSound.volume = 1.0;
-  this.endBellSound.volume = 1.0;
+  ngOnInit() {
+    this.currentTime$ = interval(1000).pipe(
+      startWith(0),
+      map(() => new Date())
+    );
 
-  // 2. Зареждаме новите кратки звуци предварително в паметта на браузъра
-  this.prepareTickSound.load();
-  this.startBellSound.load();
-  this.endBellSound.load();
+    this.timerSubscription = this.isRunning$.pipe(
+      switchMap(running => running ? interval(1000) : NEVER)
+    ).subscribe(() => {
+      this.tick();
+    });
 
-  // 3. Часовникът в реално време (най-отгоре)
-  this.currentTime$ = interval(1000).pipe(
-    startWith(0),
-    map(() => new Date())
-  );
+    this.prepareTickSound.load();
+    this.startBellSound.load();
+    this.endBellSound.load();
 
-  // 4. Главната RxJS машина, която управлява старта и паузата
-  this.timerSubscription = this.isRunning$.pipe(
-    switchMap(running => running ? interval(1000) : NEVER)
-  ).subscribe(() => {
-    this.tick();
-  });
-
-  // 5. Инициализиране на първоначалния дисплей
-  this.updateDefaultDisplay();
-}
+    this.updateDefaultDisplay();
+  }
 
   updateDefaultDisplay() {
     if (!this.isResultShown) {
       this.displayValue = `${this.mainTimeInput.toString().padStart(2, '0')}:00`;
+      this.currentRound = 1;
     }
   }
 
@@ -75,114 +71,114 @@ ngOnInit() {
     if (this.isPaused) {
       this.isPaused = false;
       this.isRunning$.next(true);
-      // Ако сме паузирали по време на подготовка, пускаме звука пак
-      if (this.isPreparing) {
-        this.prepareTickSound.play().catch(err => console.log(err));
-      }
       return;
     }
 
-    const totalStartSeconds = this.mainTimeInput * 60;
-    this.totalTicks = this.prepareTimeInput + totalStartSeconds;
-    this.currentTick = 0;
-    
+    // Инициализиране на изцяло нова тренировка
     this.isResultShown = true;
     this.isPaused = false;
-    this.isPreparing = this.prepareTimeInput > 0;
+    this.currentRound = 1;
 
-    // СТАРТ НА ПОДГОТОВКАТА: Пускаме звука да свири непрекъснато
-    if (this.isPreparing) {
-      this.prepareTickSound.currentTime = 0;
-      this.prepareTickSound.play().catch(err => console.log(err));
+    if (this.prepareTimeInput > 0) {
+      this.currentPhase = 'prepare';
+      this.phaseSecondsLeft = this.prepareTimeInput;
+      this.isPreparing = true;
+      this.isResting = false;
+      this.playSound(this.prepareTickSound);
     } else {
-      // Ако потребителят е избрал 0 секунди подготовка, директно удряме стартовата камбана
+      this.currentPhase = 'work';
+      this.phaseSecondsLeft = this.mainTimeInput * 60;
+      this.isPreparing = false;
+      this.isResting = false;
       this.playSound(this.startBellSound);
     }
 
-    this.calculateDisplay(this.currentTick);
+    this.formatDisplay();
     this.isRunning$.next(true);
   }
 
-private tick() {
-  this.currentTick++;
+  private tick() {
+    this.phaseSecondsLeft--;
 
-  // 1. Докато сме във фаза подготовка, пускаме краткото пиукане
-  if (this.currentTick < this.prepareTimeInput) {
-    this.playSound(this.prepareTickSound);
-  } 
-  
-  // 2. ХВАЩАМЕ ТОЧНИЯ МОМЕНТ: Подготовката свърши, започва рундът!
-  else if (this.currentTick === this.prepareTimeInput) {
-    // СТОП НА ПРЕПАРЕ: Спираме и зануляваме подготвителния звук веднага, за да не прелива в рунда!
-    this.prepareTickSound.pause();
-    this.prepareTickSound.currentTime = 0;
+    // Логика за управление на звуците секунда по секунда
+    if (this.currentPhase === 'prepare' && this.phaseSecondsLeft > 0) {
+      this.playSound(this.prepareTickSound);
+    }
 
-    // Пускаме камбаната за старт на рунда
-    this.playSound(this.startBellSound);
+    // Когато текущата фаза изтече (стигне 0)
+    if (this.phaseSecondsLeft <= 0) {
+      this.stopAllSounds();
+
+      if (this.currentPhase === 'prepare') {
+        // Преход: От Подготовка към Рунд 1
+        this.currentPhase = 'work';
+        this.phaseSecondsLeft = this.mainTimeInput * 60;
+        this.isPreparing = false;
+        this.playSound(this.startBellSound); // Удря камбана за старт на рунда
+      } 
+      else if (this.currentPhase === 'work') {
+        // Рундът е свършил. Има ли още рундове?
+        if (this.currentRound < this.roundsInput) {
+          // Преход: Към Почивка
+          this.currentPhase = 'rest';
+          this.phaseSecondsLeft = this.restTimeInput;
+          this.isResting = true;
+          this.playSound(this.startBellSound); // Удря камбана за край на рунда / начало на почивка
+        } else {
+          // Финал: Всички рундове са завършени
+          this.playSound(this.endBellSound);
+          this.stopTimer();
+          return;
+        }
+      } 
+      else if (this.currentPhase === 'rest') {
+        // Преход: От Почивка към следващ Рунд
+        this.currentRound++;
+        this.currentPhase = 'work';
+        this.phaseSecondsLeft = this.mainTimeInput * 60;
+        this.isResting = false;
+        this.playSound(this.startBellSound); // Удря камбана за старт на новия рунд
+      }
+    }
+
+    this.formatDisplay();
   }
 
-  // 3. ФИНАЛ: Когато времето изтече напълно (00:00)
-  if (this.currentTick > this.totalTicks) {
-    this.isRunning$.next(false);
-    this.isResultShown = false;
-    
-    // Спираме всичко останало за всеки случай
-    this.prepareTickSound.pause();
-    this.startBellSound.pause();
-
-    // Пускаме финалната камбана
-    this.playSound(this.endBellSound);
-    
-    this.updateDefaultDisplay();
-    return;
+  private formatDisplay() {
+    if (this.currentPhase === 'prepare') {
+      this.displayValue = this.phaseSecondsLeft.toString();
+    } else {
+      const mins = Math.floor(this.phaseSecondsLeft / 60);
+      const secs = this.phaseSecondsLeft % 60;
+      this.displayValue = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
   }
-
-  this.calculateDisplay(this.currentTick);
-}
 
   private playSound(audio: HTMLAudioElement) {
     audio.currentTime = 0;
-    audio.play().catch(err => console.log('Аудиото е блокирано:', err));
+    audio.play().catch(err => console.log('Аудио блокирано:', err));
   }
 
   private stopAllSounds() {
     this.prepareTickSound.pause();
     this.prepareTickSound.currentTime = 0;
-    
     this.startBellSound.pause();
     this.startBellSound.currentTime = 0;
-    
     this.endBellSound.pause();
     this.endBellSound.currentTime = 0;
-  }
-
-  private calculateDisplay(tick: number) {
-    if (tick < this.prepareTimeInput) {
-      this.isPreparing = true;
-      const prepLeft = this.prepareTimeInput - tick;
-      this.displayValue = prepLeft.toString();
-    } else {
-      this.isPreparing = false;
-      const currentMainTick = tick - this.prepareTimeInput;
-      const totalStartSeconds = this.mainTimeInput * 60;
-      const secondsLeft = totalStartSeconds - currentMainTick;
-
-      const mins = Math.floor(secondsLeft / 60);
-      const secs = secondsLeft % 60;
-      this.displayValue = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
   }
 
   pauseTimer() {
     this.isPaused = true;
     this.isRunning$.next(false);
-    this.prepareTickSound.pause(); // Паузираме фоновия звук, ако спрем по време на подготовка
+    this.stopAllSounds();
   }
 
   stopTimer() {
     this.isRunning$.next(false);
     this.isPaused = false;
     this.isPreparing = false;
+    this.isResting = false;
     this.isResultShown = false;
     this.stopAllSounds();
     this.updateDefaultDisplay();
