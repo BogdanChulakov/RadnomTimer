@@ -1,0 +1,207 @@
+/* Основен контейнер на джаджата */
+.watch-card {
+  background: #1e1e24;
+  border: 1px solid #2d2d34;
+  border-radius: 16px;
+  padding: 24px;
+  width: 320px;
+  margin: 40px auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #ffffff;
+  text-align: center;
+}
+
+/* Етикети ("Текущо време", "Обратно броене") */
+.label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #8a8a93;
+  margin-bottom: 4px;
+}
+
+/* Дисплей на текущия час */
+.clock-display {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: #4fc3f7; /* Приятно светлосин цвят */
+  text-shadow: 0 0 10px rgba(79, 195, 247, 0.2);
+}
+
+/* Разделителна линия между часа и таймера */
+.divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #2d2d34, transparent);
+  margin: 20px 0;
+}
+
+/* Дисплей на таймера */
+.timer-display {
+  font-size: 3rem;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  font-variant-numeric: tabular-nums; /* Предотвратява "мърдането" на цифрите при смяна */
+  color: #ffb74d; /* Мек оранжев цвят за таймера */
+}
+
+/* Модерен бутон за старт */
+.btn-start {
+  background: #007acc;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 122, 204, 0.3);
+}
+
+/* Ефекти при посочване и натискане на бутона */
+.btn-start:hover {
+  background: #0098ff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 122, 204, 0.4);
+}
+
+.btn-start:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(0, 122, 204, 0.2);
+}
+
+/* Добави това най-отдолу в watch-component.css */
+
+/* Стил за таймера по време на подготовка */
+.timer-display.preparing {
+  color: #ff5252; /* Агресивно червено, което привлича вниманието */
+  font-size: 4rem; /* Правим цифрата малко по-голяма, докато брои 5, 4, 3... */
+  animation: pulse 1s infinite; /* Лек пулсиращ ефект на всяка секунда */
+}
+
+/* Анимация за пулсиране */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Добави това най-отдолу в watch-component.css */
+
+.settings-section {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 5px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  flex: 1;
+}
+
+.input-group label {
+  font-size: 11px;
+  color: #8a8a93;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input-group input {
+  background: #2d2d34;
+  border: 1px solid #3d3d45;
+  border-radius: 6px;
+  color: white;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+/* Ефект при кликване в полето */
+.input-group input:focus {
+  border-color: #007acc;
+  box-shadow: 0 0 5px rgba(0, 122, 204, 0.3);
+}
+
+/* Скриване на грозните стрелки на input type="number" за по-чист вид */
+.input-group input::-webkit-outer-spin-button,
+.input-group input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+/* Добави/замени тези стилове в watch-component.css */
+
+.timer-display.paused {
+  color: #b0bec5; /* Сивкав цвят, когато е на пауза */
+  text-shadow: none;
+}
+
+/* Контейнер за бутоните */
+.controls-container {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 15px;
+}
+
+/* Общ стил за всички бутони */
+.btn {
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1; /* Разпределя ги поравно в реда */
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+/* Специфични цветове за различните бутони */
+.btn-start {
+  background: #2e7d32; /* Зелено */
+  box-shadow: 0 4px 10px rgba(46, 125, 50, 0.2);
+}
+.btn-start:hover { background: #388e3c; }
+
+.btn-pause {
+  background: #f57c00; /* Оранжево/Жълто */
+  box-shadow: 0 4px 10px rgba(245, 124, 0, 0.2);
+}
+.btn-pause:hover { background: #fb8c00; }
+
+.btn-stop {
+  background: #c62828; /* Червено */
+  box-shadow: 0 4px 10px rgba(198, 40, 40, 0.2);
+}
+.btn-stop:hover { background: #d32f2f; }
+
+.btn-restart {
+  background: #455a64; /* Сиво */
+  box-shadow: 0 4px 10px rgba(69, 90, 100, 0.2);
+}
+.btn-restart:hover { background: #546e7a; }
+
+/* Заключване на input полетата */
+input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
