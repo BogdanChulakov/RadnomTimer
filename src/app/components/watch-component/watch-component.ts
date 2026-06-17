@@ -30,7 +30,8 @@ export class WatchComponent implements OnInit, OnDestroy {
 
   // НОВО: Списък с възможните команди и техния статус
   availableCommands: SignalCommand[] = [
-    { id: 'beep', label: '🔊 Beep Звук', selected: true },
+    { id: 'beep', label: '🔊 Beep Звук', selected: false },
+    { id: 'hop', label: '🔊 Hop', selected: false },
     { id: 'left', label: '🥊 Left', selected: false },
     { id: 'right', label: '🥊 Right', selected: false },
     { id: 'jab', label: '💥 Jab', selected: false },
@@ -204,7 +205,7 @@ export class WatchComponent implements OnInit, OnDestroy {
     } else {
       const utterance = new SpeechSynthesisUtterance(chosenCommand.id);
       utterance.lang = 'en-US';
-      utterance.rate = 1.3; // Една идея по-бърз говор за боен фитнес темпо
+      utterance.rate = 1.6; // Една идея по-бърз говор за боен фитнес темпо
       window.speechSynthesis.speak(utterance);
     }
   }
