@@ -4,6 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { interval, Observable, BehaviorSubject, Subscription, NEVER } from 'rxjs';
 import { map, switchMap, startWith } from 'rxjs/operators';
 
+// НОВО: Интерфейс за структурата на командите
+interface SignalCommand {
+  id: string;
+  label: string;
+  selected: boolean;
+}
+
 @Component({
   selector: 'app-watch-component',
   standalone: true,
@@ -16,22 +23,35 @@ export class WatchComponent implements OnInit, OnDestroy {
   
   // Полета за настройки от потребителя
   prepareTimeInput: number = 5;
-  mainTimeInput: number = 3; // в минути
-  roundsInput: number = 3;    // НОВО: Брой рундове
-  restTimeInput: number = 30; // НОВО: Почивка в секунди
+  mainTimeInput: number = 3; 
+  roundsInput: number = 3;    
+  restTimeInput: number = 30; 
+  randomSignalMaxInput: number = 10; 
+
+  // НОВО: Списък с възможните команди и техния статус
+  availableCommands: SignalCommand[] = [
+    { id: 'beep', label: '🔊 Beep Звук', selected: true },
+    { id: 'left', label: '🥊 Left', selected: false },
+    { id: 'right', label: '🥊 Right', selected: false },
+    { id: 'jab', label: '💥 Jab', selected: false },
+    { id: 'cross', label: '💥 Cross', selected: false },
+    { id: 'uppercut', label: '⚡ Uppercut', selected: false },
+    { id: 'back', label: '🛡️ Back', selected: false },
+    { id: 'attack', label: '🔥 Attack', selected: false }
+  ];
 
   // Състояния за интерфейса
   isPreparing: boolean = false;
-  isResting: boolean = false; // НОВО: Дали сме в почивка
+  isResting: boolean = false; 
   isPaused: boolean = false;
   isResultShown: boolean = false;
-  currentRound: number = 1;   // НОВО: Текущ рунд
+  currentRound: number = 1;   
 
   // Вътрешни променливи за времето
-  private currentTick: number = 0;
   private phaseSecondsLeft: number = 0;
   private currentPhase: 'prepare' | 'work' | 'rest' = 'prepare';
-  
+  private randomSignalTicksLeft: number = 0;
+
   private isRunning$ = new BehaviorSubject<boolean>(false);
   displayValue: string = '03:00';
   private timerSubscription!: Subscription;
@@ -40,6 +60,7 @@ export class WatchComponent implements OnInit, OnDestroy {
   private prepareTickSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
   private startBellSound = new Audio('https://actions.google.com/sounds/v1/transportation/ship_bell.ogg');
   private endBellSound = new Audio('https://actions.google.com/sounds/v1/alarms/clock_chime.ogg');
+  private beepSignalSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
 
   ngOnInit() {
     this.currentTime$ = interval(1000).pipe(
@@ -56,6 +77,7 @@ export class WatchComponent implements OnInit, OnDestroy {
     this.prepareTickSound.load();
     this.startBellSound.load();
     this.endBellSound.load();
+    this.beepSignalSound.load();
 
     this.updateDefaultDisplay();
   }
@@ -67,6 +89,13 @@ export class WatchComponent implements OnInit, OnDestroy {
     }
   }
 
+  // НОВО: Помощен метод за включване/изключване при клик в новия дизайн
+  toggleCommand(command: SignalCommand) {
+    if (!this.isResultShown) {
+      command.selected = !command.selected;
+    }
+  }
+
   startTimer() {
     if (this.isPaused) {
       this.isPaused = false;
@@ -74,7 +103,6 @@ export class WatchComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Инициализиране на изцяло нова тренировка
     this.isResultShown = true;
     this.isPaused = false;
     this.currentRound = 1;
@@ -91,57 +119,94 @@ export class WatchComponent implements OnInit, OnDestroy {
       this.isPreparing = false;
       this.isResting = false;
       this.playSound(this.startBellSound);
+      this.resetRandomSignalTimer(); 
     }
 
     this.formatDisplay();
     this.isRunning$.next(true);
   }
 
+  private resetRandomSignalTimer() {
+    if (this.randomSignalMaxInput > 1) {
+      this.randomSignalTicksLeft = Math.floor(Math.random() * this.randomSignalMaxInput) + 1;
+    } else {
+      this.randomSignalTicksLeft = 0;
+    }
+  }
+
   private tick() {
     this.phaseSecondsLeft--;
 
-    // Логика за управление на звуците секунда по секунда
     if (this.currentPhase === 'prepare' && this.phaseSecondsLeft > 0) {
       this.playSound(this.prepareTickSound);
     }
 
-    // Когато текущата фаза изтече (стигне 0)
+    // Логика за рандом сигнал
+    if (this.currentPhase === 'work' && this.randomSignalMaxInput > 0 && this.phaseSecondsLeft > 0) {
+      this.randomSignalTicksLeft--;
+      
+      if (this.randomSignalTicksLeft <= 0) {
+        this.playRandomSelectedSignal(); // НОВО: Извиква рандомизирания избор
+        this.resetRandomSignalTimer(); 
+      }
+    }
+
     if (this.phaseSecondsLeft <= 0) {
       this.stopAllSounds();
 
       if (this.currentPhase === 'prepare') {
-        // Преход: От Подготовка към Рунд 1
         this.currentPhase = 'work';
         this.phaseSecondsLeft = this.mainTimeInput * 60;
         this.isPreparing = false;
-        this.playSound(this.startBellSound); // Удря камбана за старт на рунда
+        this.playSound(this.startBellSound); 
+        this.resetRandomSignalTimer(); 
       } 
       else if (this.currentPhase === 'work') {
-        // Рундът е свършил. Има ли още рундове?
         if (this.currentRound < this.roundsInput) {
-          // Преход: Към Почивка
           this.currentPhase = 'rest';
           this.phaseSecondsLeft = this.restTimeInput;
           this.isResting = true;
-          this.playSound(this.startBellSound); // Удря камбана за край на рунда / начало на почивка
+          this.playSound(this.startBellSound); 
         } else {
-          // Финал: Всички рундове са завършени
           this.playSound(this.endBellSound);
           this.stopTimer();
           return;
         }
       } 
       else if (this.currentPhase === 'rest') {
-        // Преход: От Почивка към следващ Рунд
         this.currentRound++;
         this.currentPhase = 'work';
         this.phaseSecondsLeft = this.mainTimeInput * 60;
         this.isResting = false;
-        this.playSound(this.startBellSound); // Удря камбана за старт на новия рунд
+        this.playSound(this.startBellSound); 
+        this.resetRandomSignalTimer(); 
       }
     }
 
     this.formatDisplay();
+  }
+
+  // НОВО: Рандомизатор на избраните команди
+  private playRandomSelectedSignal() {
+    // Взимаме само тези команди, които потребителят е маркирал
+    const selectedCommands = this.availableCommands.filter(c => c.selected);
+    
+    // Ако няма нито една избрана команда, спираме изпълнението
+    if (selectedCommands.length === 0) return;
+
+    // Избираме произволен индекс от филтрирания масив
+    const randomIndex = Math.floor(Math.random() * selectedCommands.length);
+    const chosenCommand = selectedCommands[randomIndex];
+
+    // Изпълняваме съответния сигнал
+    if (chosenCommand.id === 'beep') {
+      this.playSound(this.beepSignalSound);
+    } else {
+      const utterance = new SpeechSynthesisUtterance(chosenCommand.id);
+      utterance.lang = 'en-US';
+      utterance.rate = 1.3; // Една идея по-бърз говор за боен фитнес темпо
+      window.speechSynthesis.speak(utterance);
+    }
   }
 
   private formatDisplay() {
@@ -166,6 +231,8 @@ export class WatchComponent implements OnInit, OnDestroy {
     this.startBellSound.currentTime = 0;
     this.endBellSound.pause();
     this.endBellSound.currentTime = 0;
+    this.beepSignalSound.pause();
+    this.beepSignalSound.currentTime = 0;
   }
 
   pauseTimer() {

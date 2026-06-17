@@ -22,7 +22,26 @@
     </div>
     <div class="input-group">
       <label>Почивка (секунди):</label>
-      <input type="number" [(ngModel)]="restTimeInput" [disabled]="isResultShown" min = "0">
+      <input type="number" [(ngModel)]="restTimeInput" [disabled]="isResultShown" min="0">
+    </div>
+    <div class="input-group">
+      <label>Рандом сигнал (макс. сек):</label>
+      <input type="number" [(ngModel)]="randomSignalMaxInput" [disabled]="isResultShown" min="0">
+    </div>
+  </div>
+
+  <div class="commands-section">
+    <span class="section-label">Избери сигнали за рунда (избери няколко):</span>
+    <div class="commands-grid">
+      <div 
+        *ngFor="let cmd of availableCommands" 
+        class="command-chip" 
+        [class.selected]="cmd.selected" 
+        [class.disabled]="isResultShown"
+        (click)="toggleCommand(cmd)">
+        <span class="chip-checkbox"></span>
+        <span class="chip-text">{{ cmd.label }}</span>
+      </div>
     </div>
   </div>
 
